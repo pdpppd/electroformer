@@ -2,14 +2,14 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from model import TransformerModel
+from model import ElectroFormer
 import numpy as np
 
 # Hyperparameters
 num_epochs = 10
 batch_size = 32
 learning_rate = 0.001
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
 
 # Load the filtered data from the .npy file
 X_filtered = np.load('data/ptbxl_filtered_data.npy')
@@ -29,14 +29,14 @@ dataset = ECGDataset(X_filtered)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
 # Initialize the model, loss function, and optimizer
-model = TransformerModel(num_leads=12, d_model=256, nhead=8, num_layers=6, dim_feedforward=512, dropout=0.1).to(device)
+model = ElectroFormer(num_leads=12, d_model=256, nhead=8, num_layers=6, dim_feedforward=512, dropout=0.1).to(device)
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 # Training loop
 for epoch in range(num_epochs):
     for batch_idx, data in enumerate(dataloader):
-        data = data.transpose(1, 2).float().to(device)  # Convert data to shape (batch_size, num_timesteps, num_leads)
+        data = data.float().to(device)  # Convert data to shape (batch_size, num_leads, num_timesteps)
 
         # Randomly mask out parts of the input sequence
         mask_ratio = 0.15
@@ -45,8 +45,7 @@ for epoch in range(num_epochs):
         masked_data[mask] = 0.0
 
         # Forward pass
-        tgt_mask = model.get_tgt_mask(data.size(1)).to(device)
-        output = model(masked_data, tgt_mask)
+        output = model(masked_data)
 
         # Compute loss only for masked positions
         loss = criterion(output[mask], data[mask])

@@ -28,10 +28,16 @@ class ElectroFormer(nn.Module):
         self.decoder = nn.Linear(d_model, num_leads)
 
     def forward(self, src, src_mask=None):
-        src = self.embedding(src) * math.sqrt(self.d_model)
+        batch_size, num_timesteps, num_leads = src.shape
+        src = src.reshape(batch_size * num_timesteps, num_leads)
+        src = self.embedding(src)
+        src = src.reshape(batch_size, num_timesteps, self.d_model)
+        src = src.permute(1, 0, 2)  # Convert shape to (num_timesteps, batch_size, d_model)
+        src = src * math.sqrt(self.d_model)
         src = self.positional_encoding(src)
         output = self.transformer_encoder(src, src_mask)
         output = self.decoder(output)
+        output = output.permute(1, 0, 2)  # Convert shape back to (batch_size, num_timesteps, num_leads)
         return output
 
     def get_tgt_mask(self, size):
