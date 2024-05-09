@@ -8,7 +8,7 @@ import numpy as np
 # Hyperparameters
 num_epochs = 10
 batch_size = 32
-learning_rate = 0.001
+learning_rate = 0.0005  # Reduced learning rate
 device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
 
 # Load the filtered data from the .npy file
@@ -53,10 +53,11 @@ for epoch in range(num_epochs):
         # Backward pass and optimization
         optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # Gradient clipping
         optimizer.step()
 
         # Print progress
         if (batch_idx + 1) % 100 == 0:
             print(f"Epoch [{epoch+1}/{num_epochs}], Batch [{batch_idx+1}/{len(dataloader)}], Loss: {loss.item():.4f}")
 
-print("Training completed!")
+print("Training completed!") 
